@@ -10,7 +10,6 @@
                   [pandeiro/boot-http "0.6.1" :scope "test"]
                   [jeluard/boot-notify "0.1.1" :scope "test"]
                   [deraen/boot-less "0.2.1" :scope "test"]
-                  [cljsjs/boot-cljsjs "0.4.1" :scope "test"]
 
                   [cljsjs/react "0.12.2-5"]
                   [org.clojure/clojurescript "0.0-2850"]
@@ -33,7 +32,6 @@
   '[adzerk.boot-cljs-repl        :refer [cljs-repl start-repl]]
   '[adzerk.boot-reload           :refer [reload]]
   '[pandeiro.boot-http           :refer [serve]]
-  '[cljsjs.boot-cljsjs           :refer [from-cljsjs]]
   '[deraen.boot-less             :refer [less]]
   '[jeluard.boot-notify          :refer [notify]]
   '[clojure.java.io              :as io]
@@ -54,10 +52,9 @@
   "Start dev compiler/watcher/server"
   []
   (comp
-    (from-cljsjs :profile :development)
     (watch)
     (notify)
-    (reload :on-jsload 'rs-example.main/trigger-render)
+    ;;(reload :on-jsload 'rs-example.main/trigger-render)
     (cljs-repl)
     (cljs :source-map true
           :optimizations :none

@@ -5,25 +5,71 @@
   (:require [clojure.java.io :as io]
             [hiccup.page :refer [html5 include-css include-js]]))
 
-(defn- render-fn* []
-  (let [engine (.getEngineByName (ScriptEngineManager.) "nashorn")
-        js (doto engine
-             ;; React requires either "window" or "global" to be defined.
-             (.eval "var global = this")
-             ;; parse the compiled js file
-             (.eval (-> "main.js"
-                        io/resource
-                        io/reader)))
-        ;; eval the core namespace
-        core (.eval js "rs_example.main")
-        ;; pull the invocable render-to-string method out of core
-        render-to-string (fn [edn]
-                           (.invokeMethod ^Invocable js core
-                             "render_to_string"
-                             (-> edn
-                               pr-str
-                               list
-                               object-array)))]
+(defn nashorn-env []
+  (doto (.getEngineByName (ScriptEngineManager.) "nashorn")
+    ;; React requires either "window" or "global" to be defined.
+    (.eval "var window = this; window.location = {}; window.document = {};")
+    ;; https://github.com/paulmillr/console-polyfill
+    (.eval (-> "console-polyfill.js"
+               io/resource
+               io/reader))))
+
+(defn bootstrap-goog [engine goog-path]
+  "parse dependencies"
+  (doto engine
+    (.eval (-> (str goog-path "/base.js")
+               io/resource
+               io/reader))
+    (.eval (-> (str goog-path "/deps.js")
+               io/resource
+               io/reader))))
+
+(defn bootstrap-build [engine build]
+  "parse the compiled js file"
+  (doto engine
+    (.eval (-> build
+               io/resource
+               io/reader))))
+
+(defn bootstrap-dev [nashorn-env goog-path]
+  (doto nashorn-env
+    ;; set goog to import javascript using nashorn-env load(path)
+    (.eval (str "goog.global.CLOSURE_IMPORT_SCRIPT = function(path) {
+                     load('target/" goog-path "/' + path);
+                     return true;
+                 };"))
+    ;; loop through dependencies and require to trigger injections
+    #_ (.eval "for (var namespace in goog.dependencies_.nameToPath)
+                goog.require(namespace);")))
+
+(defn prepared-nashorn-env [goog-path build-path require-ns]
+  (-> (nashorn-env)
+    (bootstrap-goog goog-path)
+    (bootstrap-dev goog-path)
+    (bootstrap-build build-path)
+    (doto (.eval (str "goog.require('" require-ns "');")))))
+
+(defn nashorn-invokable [nashorn-env namespace method]
+  (fn [edn]
+    (.invokeMethod
+      ^Invocable nashorn-env
+      namespace
+      method
+      (-> edn
+          pr-str
+          list
+          object-array))))
+
+(defn nashorn-renderer [render-ns]
+  (let [env (prepared-nashorn-env "out/goog" "boot-cljs-main.js" render-ns)
+        namespace (.eval env (.replace render-ns "-" "_"))
+        render-to-string (nashorn-invokable env namespace "render_to_string")]
+    (-> (fn render [state-edn]
+          (render-to-string state-edn))
+      (with-meta {:env env}))))
+
+(defn- render-fn* [render-ns]
+  (let [render-to-string (nashorn-renderer render-ns)]
     (fn render [state-edn]
       (html5
        [:head
@@ -38,10 +84,7 @@
         ;; Serialize app state so client can initialize without making an
         ;; additional request.
         [:script#state {:type "application/edn"} state-edn]
-        (include-js "/framework.js")
-        ;; Initialize client and pass in IDs of HTML and state elements.
-        #_[:script {:type "text/javascript"}
-         "rs_example.main.init('content', 'state')"]]))))
+        (include-js "/main.js")]))))
 
 (defn make-render-fn
   "Returns a function to render fully-formed HTML.
