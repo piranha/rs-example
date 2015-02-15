@@ -5,8 +5,6 @@
   (:require [clojure.java.io :as io]
             [hiccup.page :refer [html5 include-css include-js]]))
 
-
-
 (defn- render-fn* []
   (let [engine (.getEngineByName (ScriptEngineManager.) "nashorn")
         js (doto engine
@@ -17,7 +15,7 @@
                         io/resource
                         io/reader)))
         ;; eval the core namespace
-        core (.eval js "rs_example.core")
+        core (.eval js "rs_example.main")
         ;; pull the invocable render-to-string method out of core
         render-to-string (fn [edn]
                            (.invokeMethod ^Invocable js core
@@ -45,7 +43,7 @@
         #_[:script {:type "text/javascript"}
          "rs_example.main.init('content', 'state')"]]))))
 
-(defn render-fn
+(defn make-render-fn
   "Returns a function to render fully-formed HTML.
   (fn render [title app-state-edn])"
   []

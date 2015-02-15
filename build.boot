@@ -21,7 +21,8 @@
                   [jarohen/phoenix.runtime "0.0.4"]
                   [jarohen/phoenix.modules.aleph "0.0.1" :exclusions [aleph]]
                   [aleph "0.4.0-beta2"]
-                  [compojure "1.3.1"]])
+                  [compojure "1.3.1"]
+                  [hiccup "1.0.5"]])
 
 (task-options! pom
   {:project 'rs-example
@@ -41,6 +42,13 @@
 
 (phoenix/init-phoenix! (io/resource "system.edn"))
 (apply repl/set-refresh-dirs (get-env :directories))
+
+(deftask start-server []
+  (with-pre-wrap fs
+    (phoenix/init-phoenix! (io/resource "system.edn"))
+    (apply repl/set-refresh-dirs (get-env :directories))
+    (start!)
+    fs))
 
 (deftask dev
   "Start dev compiler/watcher/server"
