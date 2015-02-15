@@ -1,0 +1,11 @@
+{:phoenix/nrepl-port 5656
+
+ :log     {:phoenix/component movyv.main/map->LogHandler
+           :log-level :debug}
+
+ :handler {:phoenix/component fmk.server/map->WebHandler
+           :log :phoenix/dep}
+
+ :web     {:phoenix/component phoenix.modules.aleph/map->WebServer
+           :handler :phoenix/dep
+           :port 3000}}

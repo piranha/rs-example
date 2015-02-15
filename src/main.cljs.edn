@@ -1,0 +1,3 @@
+{:require [rs-example.main]
+ :init-fns [rs-example.main/trigger-render]
+ :compiler-options {:target nil}}
