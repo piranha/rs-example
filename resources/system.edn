@@ -1,11 +1,16 @@
 {:phoenix/nrepl-port 5656
 
- :log     {:phoenix/component movyv.main/map->LogHandler
+ :log     {:phoenix/component rs-example.server.main/map->LogHandler
            :log-level :debug}
 
- :handler {:phoenix/component fmk.server/map->WebHandler
-           :log :phoenix/dep}
+ :handler {:phoenix/component rs-example.server.main/map->WebHandler
+           :log :phoenix/dep
+           :render :phoenix/dep}
 
  :web     {:phoenix/component phoenix.modules.aleph/map->WebServer
            :handler :phoenix/dep
-           :port 3000}}
+           :port 3000}
+
+ :render  {:phoenix/component rs-example.server.render/map->RenderPool
+           :pool-size 1
+           :render-ns "rs-example.main"}}

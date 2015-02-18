@@ -2,8 +2,10 @@
   (:import [javax.script
             Invocable
             ScriptEngineManager])
-  (:require [clojure.java.io :as io]
-            [hiccup.page :refer [html5 include-css include-js]]))
+  (:require [com.stuartsierra.component :as c]
+            [taoensso.timbre            :as log]
+            [clojure.java.io            :as io]
+            [hiccup.page                :refer [html5 include-css include-js]]))
 
 (defn nashorn-env []
   (doto (.getEngineByName (ScriptEngineManager.) "nashorn")
@@ -62,7 +64,7 @@
 
 (defn nashorn-renderer [render-ns]
   (let [env (prepared-nashorn-env "out/goog" "boot-cljs-main.js" render-ns)
-        namespace (.eval env (.replace render-ns "-" "_"))
+        namespace (.eval env render-ns)
         render-to-string (nashorn-invokable env namespace "render_to_string")]
     (-> (fn render [state-edn]
           (render-to-string state-edn))
@@ -76,7 +78,7 @@
         [:meta {:charset "utf-8"}]
         [:meta {:http-equiv "X-UA-Compatible" :content "IE=edge,chrome=1"}]
         [:meta {:name "viewport" :content "width=device-width"}]
-        [:title "Framework"]]
+        [:title "Render on Server"]]
        [:body
         [:noscript "If you're seeing this then you're probably a search engine."]
         ;; Render view to HTML string and insert it where React will mount.
@@ -86,17 +88,33 @@
         [:script#state {:type "application/edn"} state-edn]
         (include-js "/main.js")]))))
 
-(defn make-render-fn
-  "Returns a function to render fully-formed HTML.
-  (fn render [title app-state-edn])"
-  []
-  (let [pool (ref (repeatedly 3 render-fn*))]
-    (fn render [state-edn]
-      (let [renderer (dosync
-                       (let [f (first @pool)]
-                         (alter pool rest)
-                         f))
-            renderer (or renderer (render-fn*))
-            html (renderer state-edn)]
-        (dosync (alter pool conj renderer))
-        html))))
+(defprotocol IRender
+  (get-render-fn [this])
+  (render [this state-edn]))
+
+(defrecord RenderPool []
+  c/Lifecycle
+  (start [this]
+    (log/info "Creating render pool")
+    (let [pool (ref (repeatedly (:pool-size this) #(get-render-fn this)))]
+      (assoc this :pool pool)))
+
+  (stop [this]
+    (dosync (alter (:pool this) empty))
+    (dissoc this :pool))
+
+  IRender
+  (get-render-fn [this]
+    (render-fn* (.replace (:render-ns this) "-" "_")))
+
+  (render [{:keys [pool] :as this} state-edn]
+    (let [renderer (dosync
+                     (let [f (first @pool)]
+                       (alter pool rest)
+                       f))
+          _ (log/debug "Got to render" renderer)
+          renderer (or renderer (get-render-fn this))
+          html (renderer state-edn)]
+      (dosync (alter pool conj renderer))
+      html)))
+

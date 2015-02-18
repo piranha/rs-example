@@ -21,7 +21,9 @@
                   [jarohen/phoenix.modules.aleph "0.0.1" :exclusions [aleph]]
                   [aleph "0.4.0-beta2"]
                   [compojure "1.3.1"]
-                  [hiccup "1.0.5"]])
+                  [ring "1.3.2"]
+                  [hiccup "1.0.5"]
+                  [com.taoensso/timbre "3.3.1"]])
 
 (task-options! pom
   {:project 'rs-example
