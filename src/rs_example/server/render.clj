@@ -5,12 +5,13 @@
   (:require [com.stuartsierra.component :as c]
             [taoensso.timbre            :as log]
             [clojure.java.io            :as io]
-            [hiccup.page                :refer [html5 include-css include-js]]))
+            [hiccup.page                :as hi]))
 
 (defn nashorn-env []
   (doto (.getEngineByName (ScriptEngineManager.) "nashorn")
     ;; React requires either "window" or "global" to be defined.
     (.eval "var window = this; window.location = {}; window.document = {};")
+    (.eval "window.setTimeout = function() {};")
     ;; https://github.com/paulmillr/console-polyfill
     (.eval (-> "console-polyfill.js"
                io/resource
@@ -73,7 +74,7 @@
 (defn- render-fn* [render-ns]
   (let [render-to-string (nashorn-renderer render-ns)]
     (fn render [state-edn]
-      (html5
+      (hi/html5
        [:head
         [:meta {:charset "utf-8"}]
         [:meta {:http-equiv "X-UA-Compatible" :content "IE=edge,chrome=1"}]
@@ -86,7 +87,7 @@
         ;; Serialize app state so client can initialize without making an
         ;; additional request.
         [:script#state {:type "application/edn"} state-edn]
-        (include-js "/main.js")]))))
+        (hi/include-js "/main.js")]))))
 
 (defprotocol IRender
   (get-render-fn [this])
@@ -96,10 +97,13 @@
   c/Lifecycle
   (start [this]
     (log/info "Creating render pool")
-    (let [pool (ref (repeatedly (:pool-size this) #(get-render-fn this)))]
+    (let [eager (doall (repeatedly (:pool-size this) #(get-render-fn this)))
+          pool (ref eager)]
+      (log/info "Created render pool")
       (assoc this :pool pool)))
 
   (stop [this]
+    (log/info "Stopped render pool")
     (dosync (alter (:pool this) empty))
     (dissoc this :pool))
 

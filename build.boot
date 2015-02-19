@@ -20,7 +20,6 @@
                   [jarohen/phoenix.runtime "0.0.4"]
                   [jarohen/phoenix.modules.aleph "0.0.1" :exclusions [aleph]]
                   [aleph "0.4.0-beta2"]
-                  [compojure "1.3.1"]
                   [ring "1.3.2"]
                   [hiccup "1.0.5"]
                   [com.taoensso/timbre "3.3.1"]])
@@ -37,8 +36,9 @@
   '[deraen.boot-less             :refer [less]]
   '[jeluard.boot-notify          :refer [notify]]
   '[clojure.java.io              :as io]
-  '[phoenix                      :refer [start! stop! reload!]]
+  '[phoenix]
   '[clojure.tools.namespace.repl :as repl])
+
 
 (phoenix/init-phoenix! (io/resource "system.edn"))
 (apply repl/set-refresh-dirs (get-env :directories))
@@ -47,7 +47,7 @@
   (with-pre-wrap fs
     (phoenix/init-phoenix! (io/resource "system.edn"))
     (apply repl/set-refresh-dirs (get-env :directories))
-    (start!)
+    (phoenix/start!)
     fs))
 
 (deftask dev
@@ -56,8 +56,8 @@
   (comp
     (watch)
     (notify)
-    ;;(reload :on-jsload 'rs-example.main/trigger-render)
-    (cljs-repl)
+    (reload :on-jsload 'rs-example.main/trigger-render)
+    (repl :server true)
     (cljs :source-map true
           :optimizations :none
           :compiler-options {:cache-analysis true})
