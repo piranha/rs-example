@@ -86,7 +86,7 @@
         [:div#content.container (render-to-string state-edn)]
         ;; Serialize app state so client can initialize without making an
         ;; additional request.
-        [:script#state {:type "application/edn"} state-edn]
+        [:script#state {:type "application/edn"} (pr-str state-edn)]
         (hi/include-js "/main.js")]))))
 
 (defprotocol IRender
@@ -118,7 +118,7 @@
                        f))
           _ (log/debug "Got to render" renderer)
           renderer (or renderer (get-render-fn this))
-          html (renderer state-edn)]
+          html (time (renderer state-edn))]
       (dosync (alter pool conj renderer))
       html)))
 

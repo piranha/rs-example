@@ -1,24 +1,29 @@
 (ns rs-example.main
+  (:require-macros [tailrecursion.javelin :refer [dosync]])
   (:require [cljs.reader :refer [read-string]]
             [rum]
+            [datascript :as d]
             [rs-example.data :as data]))
 
 ;; views
 
-(rum/defc Label [n text]
-  [:div
-   (for [i (range n)]
-     [:div {:key i} (str text " ") [:span.badge i]])])
+(rum/defc Label [item]
+  (let [{:keys [id text]} item]
+    [:div {:key id} (str text " ") [:span.badge id]]))
 
 (rum/defc Root < rum/reactive []
-  (let [data (rum/react data/db)]
-    (Label (:count data) (:text data))))
+  (let [items (rum/react data/text-items)]
+    [:div
+     (for [item items]
+       (Label item))]))
 
 ;; server-side
 
 (defn render-to-string [state-str]
   (let [initial (read-string state-str)]
-    (reset! data/db initial)
+    (dosync
+      (data/reset-db!)
+      (d/transact! data/db initial))
     (js/React.renderToString (Root))))
 
 ;; client-side
@@ -42,4 +47,4 @@
                   read-string)
         el (js/document.getElementById "content")]
     (reset! target el)
-    (reset! data/db initial)))
+    (d/transact! data/db initial)))

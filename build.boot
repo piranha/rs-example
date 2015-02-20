@@ -15,7 +15,8 @@
                   [org.clojure/clojurescript "0.0-2850"]
 
                   [rum "0.2.4"]
-                  [datascript "0.8.0"]
+                  [datascript "0.9.0"]
+                  [tailrecursion/javelin "3.7.2"]
 
                   [jarohen/phoenix.runtime "0.0.4"]
                   [jarohen/phoenix.modules.aleph "0.0.1" :exclusions [aleph]]
@@ -47,13 +48,14 @@
   (with-pre-wrap fs
     (phoenix/init-phoenix! (io/resource "system.edn"))
     (apply repl/set-refresh-dirs (get-env :directories))
-    (phoenix/start!)
+    (#'phoenix/do-start!)
     fs))
 
 (deftask dev
   "Start dev compiler/watcher/server"
   []
   (comp
+    ;;(start-server)
     (watch)
     (notify)
     (reload :on-jsload 'rs-example.main/trigger-render)
