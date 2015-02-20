@@ -13,10 +13,8 @@
   supplied request. In a fully featured application, this would mirror frontend
   routing (ideally through shared code)."
   [{:keys [uri] :as req}]
-  [{:text "One"
-    :id 1}
-   {:text "Two"
-    :id 2}])
+  [{:text "One" :id 1}
+   {:text "Two" :id 2}])
 
 (defn server-renderer
   "Takes a route->state handler function.

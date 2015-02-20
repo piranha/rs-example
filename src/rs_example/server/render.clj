@@ -67,9 +67,9 @@
   (let [env (prepared-nashorn-env "out/goog" "boot-cljs-main.js" render-ns)
         namespace (.eval env render-ns)
         render-to-string (nashorn-invokable env namespace "render_to_string")]
-    (-> (fn render [state-edn]
+    (with-meta (fn render [state-edn]
           (render-to-string state-edn))
-      (with-meta {:env env}))))
+      {:env env})))
 
 (defn- render-fn* [render-ns]
   (let [render-to-string (nashorn-renderer render-ns)]
@@ -81,7 +81,6 @@
         [:meta {:name "viewport" :content "width=device-width"}]
         [:title "Render on Server"]]
        [:body
-        [:noscript "If you're seeing this then you're probably a search engine."]
         ;; Render view to HTML string and insert it where React will mount.
         [:div#content.container (render-to-string state-edn)]
         ;; Serialize app state so client can initialize without making an
@@ -93,14 +92,19 @@
   (get-render-fn [this])
   (render [this state-edn]))
 
+(defn inc-pool! [render-pool n]
+  (let [renderers (doall (repeatedly n #(get-render-fn render-pool)))]
+    (dosync (alter (:pool render-pool) concat renderers))))
+
 (defrecord RenderPool []
   c/Lifecycle
   (start [this]
     (log/info "Creating render pool")
-    (let [eager (doall (repeatedly (:pool-size this) #(get-render-fn this)))
-          pool (ref eager)]
+    (let [pool (ref '())
+          render-pool (assoc this :pool pool)]
+      (inc-pool! render-pool (:pool-size this))
       (log/info "Created render pool")
-      (assoc this :pool pool)))
+      render-pool))
 
   (stop [this]
     (log/info "Stopped render pool")
@@ -121,4 +125,3 @@
           html (time (renderer state-edn))]
       (dosync (alter pool conj renderer))
       html)))
-
