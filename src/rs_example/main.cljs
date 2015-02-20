@@ -33,10 +33,10 @@
 
 (defn trigger-render []
   (let [{:keys [comp el]} @target]
-    (if comp
-      (rum/request-render comp)
-      (swap! target assoc :comp
-        (rum/mount (Root) el)))))
+    (cond
+      comp (rum/request-render comp)
+      el   (swap! target assoc :comp
+             (rum/mount (Root) el)))))
 
 (add-watch data/db ::render
   (fn [_ _ _ _]
