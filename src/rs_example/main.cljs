@@ -28,23 +28,24 @@
 
 ;; client-side
 
-(def target (atom nil))
+(defonce target (atom {:el nil
+                       :comp nil}))
 
 (defn trigger-render []
-  (swap! data/db update-in [:dev] not))
-
-(defn request-render [el state]
-  (rum/mount (Root) el))
+  (let [{:keys [comp el]} @target]
+    (if comp
+      (rum/request-render comp)
+      (swap! target assoc :comp
+        (rum/mount (Root) el)))))
 
 (add-watch data/db ::render
-  (fn [_ _ _ state]
-    (when @target
-      (request-render @target state))))
+  (fn [_ _ _ _]
+    (trigger-render)))
 
 (defn main []
   (let [initial (-> (js/document.getElementById "state")
                   .-innerHTML
                   read-string)
         el (js/document.getElementById "content")]
-    (reset! target el)
+    (swap! target assoc :el el)
     (d/transact! data/db initial)))
