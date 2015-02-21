@@ -14,7 +14,7 @@
                   [cljsjs/react "0.12.2-5"]
                   [org.clojure/clojurescript "0.0-2850"]
 
-                  [rum "0.2.4"]
+                  [rum "0.2.5"]
                   [datascript "0.9.0"]
                   [tailrecursion/javelin "3.7.2"]
 
