@@ -1,2 +1,3 @@
 /.nrepl-*
 /target/
+/nashorn_code_cache/

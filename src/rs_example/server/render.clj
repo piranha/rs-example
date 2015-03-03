@@ -1,14 +1,18 @@
 (ns rs-example.server.render
   (:import [javax.script
             Invocable
-            ScriptEngineManager])
+            ScriptEngineManager]
+           [jdk.nashorn.api.scripting
+            NashornScriptEngineFactory])
   (:require [com.stuartsierra.component :as c]
             [taoensso.timbre            :as log]
             [clojure.java.io            :as io]
             [hiccup.page                :as hi]))
 
 (defn nashorn-env []
-  (doto (.getEngineByName (ScriptEngineManager.) "nashorn")
+  (doto #_ (.getEngineByName (ScriptEngineManager.) "nashorn")
+        (.getScriptEngine (NashornScriptEngineFactory.)
+          (into-array String ["-pcc" "-ot=true"]))
     ;; React requires either "window" or "global" to be defined.
     (.eval "var window = this; window.location = {}; window.document = {};")
     (.eval "window.setTimeout = function() {};")
@@ -96,13 +100,15 @@
   (let [renderers (doall (repeatedly n #(get-render-fn render-pool)))]
     (dosync (alter (:pool render-pool) concat renderers))))
 
-(defrecord RenderPool []
+(defrecord RenderPool [render-ns pool-size cache-path]
   c/Lifecycle
   (start [this]
     (log/info "Creating render pool")
-    (let [pool (ref '())
+    (when cache-path
+      (System/setProperty "nashorn.persistent.code.cache" cache-path))
+    (let [pool        (ref '())
           render-pool (assoc this :pool pool)]
-      (inc-pool! render-pool (:pool-size this))
+      (inc-pool! render-pool pool-size)
       (log/info "Created render pool")
       render-pool))
 
@@ -113,15 +119,15 @@
 
   IRender
   (get-render-fn [this]
-    (render-fn* (.replace (:render-ns this) "-" "_")))
+    (render-fn* (.replace render-ns "-" "_")))
 
   (render [{:keys [pool] :as this} state-edn]
     (let [renderer (dosync
                      (let [f (first @pool)]
                        (alter pool rest)
                        f))
-          _ (log/debug "Got to render" renderer)
+          _        (log/debug "Got to render" renderer)
           renderer (or renderer (get-render-fn this))
-          html (time (renderer state-edn))]
+          html     (time (renderer state-edn))]
       (dosync (alter pool conj renderer))
       html)))

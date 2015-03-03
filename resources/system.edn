@@ -9,8 +9,9 @@
 
  :web     {:phoenix/component phoenix.modules.aleph/map->WebServer
            :handler :phoenix/dep
-           :port 3000}
+           :port 5000}
 
  :render  {:phoenix/component rs-example.server.render/map->RenderPool
            :pool-size 1
+           :cache-path nil
            :render-ns "rs-example.main"}}

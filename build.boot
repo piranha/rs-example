@@ -57,7 +57,7 @@
   (comp
     ;;(start-server)
     (watch)
-    (notify)
+    ;;(notify)
     (reload :on-jsload 'rs-example.main/trigger-render)
     (repl :server true)
     (cljs :source-map true
